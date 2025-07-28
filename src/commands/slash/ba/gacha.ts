@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder } from 'discord.js';
-import { getRandomColor, drawInQueueReply } from '@/utilities';
+import { drawInQueueReply } from '@/utilities';
 import { getCurrentGachaData, tomorrowResetTime } from '@/utilities/ba';
 import Queue from 'queue';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
