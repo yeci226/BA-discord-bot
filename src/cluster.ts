@@ -2,13 +2,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { ClusterManager, HeartbeatManager } from 'discord-hybrid-sharding';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 import Logger from '@/utilities/core/logger';
+
+// 获取当前文件的目录路径
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirPath = path.dirname(currentFilePath);
 
 /**
  * @description 分片管理器
  */
-const clusterManager = new ClusterManager(`${__dirname}/index.js`, {
+const clusterManager = new ClusterManager(path.join(currentDirPath, 'index.js'), {
   totalShards: 'auto',
   totalClusters: 5,
   mode: 'worker',
