@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { drawInQueueReply } from '@/utilities';
 import { getStudentsData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate } from '@/utilities/ba';
 import Queue from 'queue';
@@ -143,12 +143,12 @@ export default {
     .addBooleanOption((option) =>
       option
         .setName('enable_background')
-        .setDescription('Enable background image')
+        .setDescription('Enable background image (default: true)')
         .setNameLocalizations({
           'zh-TW': '啟用背景',
         })
         .setDescriptionLocalizations({
-          'zh-TW': '是否啟用背景圖片',
+          'zh-TW': '是否啟用背景圖片 (預設啟用)',
         })
         .setRequired(false),
     ),
@@ -197,6 +197,24 @@ export default {
         position: index + 5,
       });
     });
+
+    // 驗證所有選擇的學生是否存在
+    const studentsData = await getStudentsData();
+    const invalidStudents = selectedCharacters.filter((char) => !studentsData[char.id]);
+
+    if (invalidStudents.length > 0) {
+      const invalidIds = invalidStudents.map((char) => char.id).join(', ');
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor('#E76161')
+            .setTitle('找不到指定的學生，請老師確認後再試！')
+            .setDescription(`以下學生ID不存在：\`${invalidIds}\``)
+            .setThumbnail('https://cdnimg-v2.gamekee.com/wiki2.0/images/w_240/h_240/215/43637/2025/3/1/543385.gif'),
+        ],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
     await interaction.deferReply();
 
@@ -559,6 +577,12 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
           } catch (error) {
             console.error(`Failed to load character image for ${student.Name}:`, error);
           }
+        } else {
+          // 學生不存在的情況
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+          ctx.font = 'bold 20px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('UNKNOWN', slotX + slotSize / 2, slotY + 10 + slotSize / 2);
         }
       } else {
         ctx.fillStyle = 'rgba(204, 204, 204, 0.8)';

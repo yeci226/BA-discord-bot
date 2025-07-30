@@ -51,8 +51,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
                 name: `${interactionUser.username} - ${interactionUser.id}`,
               })
               .setThumbnail(interactionGuild?.iconURL() ?? null)
-              .setDescription(`\`\`\`${interactionGuild?.name} - ${interactionGuild?.id}\`\`\``),
-            // .addFields(command.data.name, `${interaction.getSubcommand() ? `> ${interaction.getSubcommand()}` : '\u200b'}`, true),
+              .setDescription(`\`\`\`${interactionGuild?.name} - ${interactionGuild?.id}\`\`\``)
+              .addFields({ name: command.data.name, value: '\u200b', inline: true }),
           ],
         });
       }
