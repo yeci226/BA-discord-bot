@@ -109,10 +109,6 @@ async function bindEvents(paths: string[]) {
  * @description 載入指令
  */
 export async function load() {
-  // 訊息指令
-  const messageCommandPaths = await getAllFiles(`${__dirname}/commands/message`, ['.js']);
-  const messageCommands = await getMessageCommands(messageCommandPaths);
-
   // 斜線指令
   const slashCommandPaths = await getAllFiles(`${__dirname}/commands/slash`, ['.js']);
   const slashCommands = await getSlashCommands(slashCommandPaths);
@@ -121,7 +117,7 @@ export async function load() {
   const eventPaths = await getAllFiles(`${__dirname}/events`, ['.js']);
   await bindEvents(eventPaths);
 
-  new Logger('系統').success(`已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令、${messageCommands.length} 訊息指令`);
+  new Logger('系統').success(`已載入 ${eventPaths.length} 事件、${slashCommands.length} 斜線指令`);
 
   client.on('ready', async () => {
     await client.application?.commands.set(slashCommands);
