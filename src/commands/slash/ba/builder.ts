@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { drawInQueueReply } from '@/utilities';
-import { getStudentsData, tomorrowResetTime, armorTypeColorMap, bulletTypeColorMap, armorTypeMap, bulletTypeMap, tacticRoleMap } from '@/utilities/ba';
+import { getStudentsData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate } from '@/utilities/ba';
 import Queue from 'queue';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';
@@ -267,7 +267,9 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
         drawY = (canvasHeight - drawHeight) / 2;
       }
 
+      ctx.filter = 'blur(2px)';
       ctx.drawImage(backgroundImage, drawX, drawY, drawWidth, drawHeight);
+      ctx.filter = 'none';
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, 1400, 400);
@@ -283,9 +285,9 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
     ctx.textAlign = 'center';
 
     const titleY = note ? 70 : 90;
-    ctx.strokeText(teamName || '隊伍展示', 700, titleY);
+    ctx.strokeText(teamName || '未命名隊伍', 700, titleY);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(teamName || '隊伍展示', 700, titleY);
+    ctx.fillText(teamName || '未命名隊伍', 700, titleY);
 
     const slotSize = 180;
     const slotSpacing = 25;
@@ -482,94 +484,50 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
 
             const attrBarHeight = 32;
             const firstAttrBarWidth = 70;
-            const firstAttrBarX = bgX - 5;
-            const firstAttrBarY = bgY + bgHeight + 4;
+            const firstAttrBarX = bgX + bgWidth;
+            const firstAttrBarY = bgY;
 
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.lineWidth = 2;
 
-            const firstRadius = attrBarHeight / 2;
+            const circleRadius = 16;
+            const circleX = firstAttrBarX + firstAttrBarWidth / 2 - 16;
+            const circleY = firstAttrBarY + attrBarHeight / 2;
+
             ctx.beginPath();
-            ctx.moveTo(firstAttrBarX + firstRadius, firstAttrBarY);
-            ctx.lineTo(firstAttrBarX + firstAttrBarWidth - firstRadius, firstAttrBarY);
-            ctx.quadraticCurveTo(firstAttrBarX + firstAttrBarWidth, firstAttrBarY, firstAttrBarX + firstAttrBarWidth, firstAttrBarY + firstRadius);
-            ctx.lineTo(firstAttrBarX + firstAttrBarWidth, firstAttrBarY + attrBarHeight - firstRadius);
-            ctx.quadraticCurveTo(firstAttrBarX + firstAttrBarWidth, firstAttrBarY + attrBarHeight, firstAttrBarX + firstAttrBarWidth - firstRadius, firstAttrBarY + attrBarHeight);
-            ctx.lineTo(firstAttrBarX + firstRadius, firstAttrBarY + attrBarHeight);
-            ctx.quadraticCurveTo(firstAttrBarX, firstAttrBarY + attrBarHeight, firstAttrBarX, firstAttrBarY + attrBarHeight - firstRadius);
-            ctx.lineTo(firstAttrBarX, firstAttrBarY + firstRadius);
-            ctx.quadraticCurveTo(firstAttrBarX, firstAttrBarY, firstAttrBarX + firstRadius, firstAttrBarY);
-            ctx.closePath();
+            ctx.arc(circleX, circleY, circleRadius, 0, 2 * Math.PI);
             ctx.fill();
 
-            const iconSize = 24;
+            const iconSize = 30;
             const iconMargin = 4;
-            const iconPadding = 4;
             const iconX = firstAttrBarX + iconMargin;
             const iconY = firstAttrBarY + (attrBarHeight - iconSize) / 2;
 
-            try {
-              const roleImage = await loadImage(`./public/role/Role_${student.TacticRole}.png`);
-              ctx.save();
-              ctx.beginPath();
-              ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, 2 * Math.PI);
-              ctx.clip();
-              ctx.drawImage(roleImage, iconX, iconY, iconSize, iconSize);
-              ctx.restore();
-            } catch (error) {
-              console.error(`Failed to load role image for ${student.TacticRole}:`, error);
-            }
+            const roleImage = await loadImage(`./public/role/Role_${student.TacticRole}.png`);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, 2 * Math.PI);
+            ctx.clip();
+            ctx.drawImage(roleImage, iconX, iconY, iconSize, iconSize);
+            ctx.restore();
 
-            const firstAttrLabel = tacticRoleMap[student.TacticRole] || student.TacticRole;
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
-            ctx.textAlign = 'left';
-            const textX = iconX + iconSize + iconMargin + iconPadding - 4;
-            const textY = firstAttrBarY + attrBarHeight / 2 + 6;
-            ctx.fillText(firstAttrLabel, textX, textY);
-
-            const attrBarsStartY = slotY + slotSize - attrBarHeight - 10;
-
-            const cardActualWidth = slotSize + 2 * skewOffset;
-
-            const attrBarWidths = [70, 70];
+            const attrBarsStartY = slotY + slotSize - attrBarHeight - 5;
+            const attrBarWidths = [35, 35];
             const totalBarsWidth = attrBarWidths.reduce((sum, width) => sum + width, 0);
-            const totalSpacing = 4;
-
-            const totalWidth = totalBarsWidth + 8;
-            const attrBarsStartX = slotX + skewOffset + (cardActualWidth - totalWidth) / 2 - 57.5;
-
+            const totalWidth = totalBarsWidth + 2;
+            const attrBarsStartX = slotX - totalWidth + 60;
             const attrLabels = [student.BulletType, student.ArmorType];
 
             for (let i = 0; i < 2; i++) {
               const currentBarWidth = attrBarWidths[i];
-              const barX = attrBarsStartX + i * (currentBarWidth - 62.5);
-              const barY = attrBarsStartY - i * 35;
-
-              ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-              ctx.lineWidth = 2;
-
-              const radius = attrBarHeight / 2;
-              ctx.beginPath();
-              ctx.moveTo(barX + radius, barY);
-              ctx.lineTo(barX + currentBarWidth - radius, barY);
-              ctx.quadraticCurveTo(barX + currentBarWidth, barY, barX + currentBarWidth, barY + radius);
-              ctx.lineTo(barX + currentBarWidth, barY + attrBarHeight - radius);
-              ctx.quadraticCurveTo(barX + currentBarWidth, barY + attrBarHeight, barX + currentBarWidth - radius, barY + attrBarHeight);
-              ctx.lineTo(barX + radius, barY + attrBarHeight);
-              ctx.quadraticCurveTo(barX, barY + attrBarHeight, barX, barY + attrBarHeight - radius);
-              ctx.lineTo(barX, barY + radius);
-              ctx.quadraticCurveTo(barX, barY, barX + radius, barY);
-              ctx.closePath();
-              ctx.fill();
-
-              const iconSize = 24;
+              const barX = attrBarsStartX + i * (currentBarWidth + 5);
+              const barY = attrBarsStartY;
+              const iconSize = 36;
               const iconMargin = 4;
-              const iconPadding = 4;
               const iconX = barX + iconMargin;
               const iconY = barY + (attrBarHeight - iconSize) / 2;
 
-              const colorMap = i === 0 ? bulletTypeColorMap : armorTypeColorMap;
+              const colorMap = i === 0 ? BULLET_TYPE_COLORS : ARMOR_TYPE_COLORS;
               const colorKey = i === 0 ? student.BulletType : student.ArmorType;
               const iconColor = colorMap[colorKey] || '#ffffff';
 
@@ -579,10 +537,9 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
               ctx.fill();
 
               const typeImageName = i === 0 ? 'Attack' : 'Defense';
-              const typeMap = i === 0 ? bulletTypeMap : armorTypeMap;
               const typeKey = i === 0 ? student.BulletType : student.ArmorType;
 
-              attrLabels[i] = typeMap[typeKey] || attrLabels[i];
+              attrLabels[i] = await smartTranslate(typeKey);
 
               try {
                 const typeImage = await loadImage(`./public/type/Type_${typeImageName}.png`);
@@ -590,7 +547,7 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
                 ctx.beginPath();
                 ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, 2 * Math.PI);
                 ctx.clip();
-                const smallIconSize = 16;
+                const smallIconSize = 22;
                 const smallIconX = iconX + (iconSize - smallIconSize) / 2;
                 const smallIconY = iconY + (iconSize - smallIconSize) / 2;
                 ctx.drawImage(typeImage, smallIconX, smallIconY, smallIconSize, smallIconSize);
@@ -598,13 +555,6 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
               } catch (error) {
                 console.error(`Failed to load type image for ${typeImageName}:`, error);
               }
-
-              ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 16px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
-              ctx.textAlign = 'left';
-              const textX = iconX + iconSize + iconMargin + iconPadding - 4;
-              const textY = barY + attrBarHeight / 2 + 6;
-              ctx.fillText(attrLabels[i], textX, textY);
             }
           } catch (error) {
             console.error(`Failed to load character image for ${student.Name}:`, error);
@@ -614,7 +564,7 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
         ctx.fillStyle = 'rgba(204, 204, 204, 0.8)';
         ctx.font = 'italic 32px Nexon';
         ctx.textAlign = 'center';
-        ctx.fillText('EMPTY', slotX + 2.5 + slotSize / 2, slotY + 10 + slotSize / 2);
+        ctx.fillText('EMPTY', slotX + slotSize / 2, slotY + 10 + slotSize / 2);
       }
     }
 
