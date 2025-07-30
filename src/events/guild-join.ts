@@ -1,7 +1,7 @@
 import { Events, WebhookClient, EmbedBuilder, Guild } from 'discord.js';
 import moment from 'moment';
 
-import { cluster, client } from '@/index';
+import { cluster, client } from '@/index.js';
 
 const webhook = process.env.JL_WEBHOOK ? new WebhookClient({ url: process.env.JL_WEBHOOK }) : null;
 

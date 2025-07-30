@@ -1,16 +1,22 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
 dotenv.config();
 
 import { Client, GatewayIntentBits, Partials, Collection, ApplicationCommandType } from 'discord.js';
 import { ClusterClient, getInfo } from 'discord-hybrid-sharding';
 import { QuickDB } from 'quick.db';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Types
 import type { MessageCommand, SlashCommand } from '@/types';
 
 // Utilities
-import { getAllFiles } from '@/utilities';
-import Logger from '@/utilities/core/logger';
+import { getAllFiles } from '@/utilities/index.js';
+import Logger from '@/utilities/core/logger.js';
 
 /**
  * @description Discord 客戶端
@@ -53,7 +59,8 @@ async function getMessageCommands(paths: string[]) {
   const result: any[] = [];
 
   for (let path of paths) {
-    const file = (await import(path))?.default;
+    const fileUrl = `file://${path}`;
+    const file = (await import(fileUrl))?.default;
     const splitted = path.split('/');
     const folder = splitted[splitted.length - 2];
 
@@ -76,7 +83,8 @@ async function getSlashCommands(paths: string[]) {
   const result: any[] = [];
 
   for (let path of paths) {
-    const file = (await import(path))?.default;
+    const fileUrl = `file://${path}`;
+    const file = (await import(fileUrl))?.default;
 
     if (file.data && file.execute) {
       commands.slash.set(file.data.name, file);
@@ -101,7 +109,8 @@ async function getSlashCommands(paths: string[]) {
  */
 async function bindEvents(paths: string[]) {
   for (let path of paths) {
-    await import(path);
+    const fileUrl = `file://${path}`;
+    await import(fileUrl);
   }
 }
 

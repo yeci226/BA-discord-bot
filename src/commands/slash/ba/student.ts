@@ -1,20 +1,13 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder } from 'discord.js';
-import { drawInQueueReply } from '@/utilities';
-import {
-  getStudentsData,
-  getEquipmentData,
-  tomorrowResetTime,
-  ARMOR_TYPE_COLORS,
-  BULLET_TYPE_COLORS,
-  smartTranslate,
-  smartTranslateBatch,
-  getLocalizationData,
-  SQUAD_TYPE_COLORS,
-} from '@/utilities/ba';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, MessageFlags } from 'discord.js';
+import { drawInQueueReply } from '@/utilities/index.js';
+import { getStudentsData, getEquipmentData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate, smartTranslateBatch, SQUAD_TYPE_COLORS } from '@/utilities/ba/index.js';
 import Queue from 'queue';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';
-GlobalFonts.registerFromPath(join(process.cwd(), 'public', 'font', 'NEXONFootballGothicBA1.woff2'), 'Nexon');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'NEXONFootballGothicBA1.woff2'), 'Nexon');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'SourceHanSansTC-Regular.otf'), 'SourceHanSansTC');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'SourceHanSans-Regular.otf'), 'SourceHanSans');
+
 const drawQueue = new Queue({ autostart: true });
 
 // 獲取武器最大等級限制
@@ -230,6 +223,23 @@ export default {
     if (!studentId) {
       return interaction.reply({
         embeds: [new EmbedBuilder().setColor('#E76161').setTitle('請提供學生名稱或ID，老師！').setThumbnail('https://cdnimg-v2.gamekee.com/wiki2.0/images/w_240/h_240/215/43637/2025/3/1/543385.gif')],
+      });
+    }
+
+    const studentsData = await getStudentsData();
+    const invalidStudents = [studentId].filter((char) => !studentsData[char]);
+
+    if (invalidStudents.length > 0) {
+      const invalidIds = invalidStudents.join(', ');
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor('#E76161')
+            .setTitle('找不到指定的學生，請老師確認後再試！')
+            .setDescription(`以下學生ID不存在：\`${invalidIds}\``)
+            .setThumbnail('https://cdnimg-v2.gamekee.com/wiki2.0/images/w_240/h_240/215/43637/2025/3/1/543385.gif'),
+        ],
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -952,14 +962,14 @@ async function drawStudentDetailImage(
     let rightCurrentY = contentY;
 
     // 第一個區塊 - 學生名稱和基本資訊 (跨越整個右側區域)
-    ctx.font = 'bold 78px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '78px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'left';
     ctx.fillText(student.Name, leftColumnX, leftCurrentY);
     const nameWidth = ctx.measureText(student.Name).width;
 
     // 角色等級（放在角色名稱右下角）
-    ctx.font = 'bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = 'bold 32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#cccccc';
     ctx.textAlign = 'left';
 
@@ -980,7 +990,7 @@ async function drawStudentDetailImage(
         ctx.drawImage(favorIcon, favorX, favorY, favorIconSize, favorIconSize);
 
         // 羈絆等級數字（放在圖標中心）
-        ctx.font = '700 20px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif'; // 調整字體大小以適合圖標
+        ctx.font = '700 20px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif'; // 調整字體大小以適合圖標
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(favorLevel.toString(), favorX + favorIconSize / 2, favorY + favorIconSize / 2 + 7); // 置中並微調垂直位置
@@ -994,7 +1004,7 @@ async function drawStudentDetailImage(
         ctx.fill();
 
         // 在心形背景上顯示數字
-        ctx.font = '700 20px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+        ctx.font = '700 20px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(favorLevel.toString(), favorX + favorIconSize / 2, favorY + favorIconSize / 2 + 7);
@@ -1038,9 +1048,11 @@ async function drawStudentDetailImage(
       const starText = limitedText ? `(${limitedText})` : '';
 
       // 計算背景框寬度
-      ctx.font = 'bold 28px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = '28px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       const limitedTextWidth = starText ? ctx.measureText(starText).width + 10 : 0;
-      const starPillWidth = Math.max(150, totalStarWidth + limitedTextWidth + 20);
+      // 根據星級調整最小寬度，3星時使用較小的最小寬度
+      const minWidth = starGrade <= 3 ? 120 : 150;
+      const starPillWidth = Math.max(minWidth, totalStarWidth + limitedTextWidth + 20);
       // 繪製背景
       ctx.fillStyle = '#2a2a2a';
       ctx.beginPath();
@@ -1082,7 +1094,7 @@ async function drawStudentDetailImage(
     ctx.roundRect(pillX, leftCurrentY, 160, infoPillHeight, 20);
     ctx.fill();
 
-    ctx.font = 'italic bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = 'italic 32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = SQUAD_TYPE_COLORS[student.SquadType];
     ctx.textAlign = 'center';
     ctx.fillText(await smartTranslate(student.SquadType), pillX + 80, leftCurrentY + 35);
@@ -1116,7 +1128,7 @@ async function drawStudentDetailImage(
       console.error(`Failed to load role image:`, error);
     }
 
-    ctx.font = 'bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.fillText(roleText, attributeX + rolePillWidth / 2 + 10, attributeY + 35);
@@ -1151,7 +1163,7 @@ async function drawStudentDetailImage(
       console.error(`Failed to load attack type image:`, error);
     }
 
-    ctx.font = 'bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.fillText(attackText, attributeX + attackPillWidth / 2 + 20, attributeY + 35);
@@ -1186,7 +1198,7 @@ async function drawStudentDetailImage(
       console.error(`Failed to load defense type image:`, error);
     }
 
-    ctx.font = 'bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.fillText(defenseText, attributeX + defensePillWidth / 2 + 20, attributeY + 35);
@@ -1231,7 +1243,7 @@ async function drawStudentDetailImage(
         }
       }
 
-      ctx.font = 'bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = '30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
 
@@ -1346,21 +1358,21 @@ async function drawStudentDetailImage(
       } catch (error) {
         // 如果載入失敗，顯示武器名稱
         console.error(`Failed to load weapon for ${studentId}:`, error);
-        ctx.font = 'bold 24px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+        ctx.font = '24px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.fillText(student.Weapon.Name || 'WEAPON', weaponX + weaponIconWidth / 2 - 15, weaponY + weaponIconHeight / 2 + 4);
       }
     } else {
       // 6星以下顯示EMPTY
-      ctx.font = 'italic bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = 'italic 30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.fillStyle = '#2a2a2a';
       ctx.textAlign = 'center';
       ctx.fillText('EMPTY', weaponX + weaponIconWidth / 2 - 15, weaponY + weaponIconHeight / 2 + 4); // 文字往右移動為圖標留空間
     }
 
     // 武器類型文字和等級
-    ctx.font = 'italic bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = 'italic 32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
 
@@ -1378,7 +1390,7 @@ async function drawStudentDetailImage(
 
       // 測量基礎文字寬度
       const baseTextWidth = ctx.measureText(baseText).width;
-      ctx.font = 'bold 24px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = '24px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       const totalTextWidth = ctx.measureText(weaponText).width;
 
       // 計算起始位置（居中對齊）
@@ -1387,15 +1399,17 @@ async function drawStudentDetailImage(
       // 繪製基礎文字
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
-      ctx.font = 'italic bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = 'italic 32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.fillText(baseText, startX, weaponY + weaponIconHeight + 25);
 
       ctx.fillStyle = '#cccccc';
-      ctx.font = 'bold 24px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = '24px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.fillText(levelText, startX + baseTextWidth + 7.5, weaponY + weaponIconHeight + 25);
     } else {
-      // 沒有武器時只顯示基礎文字
-      ctx.fillText(weaponText, weaponX + weaponIconWidth / 2 - 15, weaponY + weaponIconHeight + 25);
+      ctx.font = 'italic 48px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
+      ctx.fillStyle = '#666666';
+      ctx.textAlign = 'left';
+      ctx.fillText('EMPTY', weaponX + weaponIconWidth / 2 - 80, weaponY + weaponIconHeight - 15);
     }
 
     // 繪製分隔線
@@ -1432,7 +1446,7 @@ async function drawStudentDetailImage(
         ctx.arc(equipmentX + equipmentIconWidth / 2, equipmentY + equipmentIconHeight / 2, Math.min(equipmentIconWidth, equipmentIconHeight) / 2 - 5, 0, 2 * Math.PI);
         ctx.clip();
         ctx.fillRect(equipmentX + 5, equipmentY + 5, equipmentIconWidth - 10, equipmentIconHeight - 10);
-        ctx.font = 'italic bold 20px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+        ctx.font = 'italic 20px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
         ctx.fillStyle = '#2a2a2a';
         ctx.textAlign = 'center';
         ctx.fillText('EMPTY', equipmentX + equipmentIconWidth / 2 - 2, equipmentY + equipmentIconHeight / 2 + 6);
@@ -1449,14 +1463,14 @@ async function drawStudentDetailImage(
           ctx.restore();
         } catch (error) {
           // 如果載入失敗，顯示裝備類型名稱
-          ctx.font = 'bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif'; // 放大字體
+          ctx.font = '30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif'; // 放大字體
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.fillText(equipmentType, equipmentX + equipmentIconWidth / 2, equipmentY + equipmentIconHeight / 2 + 4);
         }
 
         // 裝備等級
-        ctx.font = 'bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif'; // 放大字體
+        ctx.font = '32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif'; // 放大字體
         ctx.fillStyle = '#cccccc';
         ctx.textAlign = 'center';
         ctx.fillText(`T${equipmentLevel}`, equipmentX + equipmentIconWidth / 2, equipmentY + equipmentIconHeight + 20);
@@ -1491,7 +1505,7 @@ async function drawStudentDetailImage(
         ctx.arc(exclusiveEquipmentX + equipmentIconWidth / 2, equipmentY + equipmentIconHeight / 2, Math.min(equipmentIconWidth, equipmentIconHeight) / 2 - 5, 0, 2 * Math.PI);
         ctx.clip();
         ctx.fillRect(exclusiveEquipmentX + 5, equipmentY + 5, equipmentIconWidth - 10, equipmentIconHeight - 10);
-        ctx.font = 'italic bold 20px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+        ctx.font = 'italic 20px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
         ctx.fillStyle = '#2a2a2a';
         ctx.textAlign = 'center';
         ctx.fillText('ERROR', exclusiveEquipmentX + equipmentIconWidth / 2 - 2, equipmentY + equipmentIconHeight / 2 + 6);
@@ -1499,7 +1513,7 @@ async function drawStudentDetailImage(
       }
 
       // 專屬裝備等級顯示
-      ctx.font = 'bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = '32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.fillStyle = '#cccccc';
       ctx.textAlign = 'center';
       const gearTier = favorLevel >= 20 ? 'T2' : 'T1'; // 20等以上顯示T2，15-19等顯示T1
@@ -1511,7 +1525,7 @@ async function drawStudentDetailImage(
       ctx.arc(exclusiveEquipmentX + equipmentIconWidth / 2, equipmentY + equipmentIconHeight / 2, Math.min(equipmentIconWidth, equipmentIconHeight) / 2 - 5, 0, 2 * Math.PI);
       ctx.clip();
       ctx.fillRect(exclusiveEquipmentX + 5, equipmentY + 5, equipmentIconWidth - 10, equipmentIconHeight - 10);
-      ctx.font = 'italic bold 20px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = 'italic 20px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.fillStyle = '#2a2a2a';
       ctx.textAlign = 'center';
       ctx.fillText('EMPTY', exclusiveEquipmentX + equipmentIconWidth / 2 - 2, equipmentY + equipmentIconHeight / 2 + 6);
@@ -1596,7 +1610,7 @@ async function drawStudentDetailImage(
     const statIconSize = 35; // 增大圖標尺寸
     const startY = leftCurrentY + 10; // 往上移動，從頂部開始
 
-    ctx.font = 'bold 30px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '30px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.textAlign = 'left';
 
     for (let index = 0; index < stats.length; index++) {
@@ -1977,7 +1991,8 @@ function measureTextWithIcons(ctx: any, text: string, fontScaleRatio: number = 1
   while ((match = iconRegex.exec(measureText)) !== null) {
     const [, , , textPart] = match;
     // 用占位字符替換圖標，寬度等於圖標實際寬度
-    const iconPlaceholder = '□'.repeat(Math.ceil(getIconWidth() / 12)); // 約12px每個□字符
+    // 更精確的圖標寬度計算：圖標本身19px * 1.3 + 間距5px = 約30px
+    const iconPlaceholder = '□'.repeat(Math.ceil(30 / 12)); // 約12px每個□字符，30/12=2.5，向上取整為3
     measureText = measureText.replace(match[0], textPart + iconPlaceholder);
   }
 
@@ -1987,11 +2002,13 @@ function measureTextWithIcons(ctx: any, text: string, fontScaleRatio: number = 1
 // 智能換行函數，考慮圖標和特殊標記
 async function wrapTextWithIcons(ctx: any, text: string, maxWidth: number, fontScaleRatio: number = 1): Promise<string[]> {
   const lines: string[] = [];
-  const words = text.split(' ');
+
+  // 首先按空格分割，但保留空格
+  const tokens = text.split(/(\s+)/);
   let currentLine = '';
 
-  for (const word of words) {
-    const testLine = currentLine + (currentLine ? ' ' : '') + word;
+  for (const token of tokens) {
+    const testLine = currentLine + token;
     const lineWidth = measureTextWithIcons(ctx, testLine, fontScaleRatio);
 
     if (lineWidth <= maxWidth) {
@@ -1999,10 +2016,71 @@ async function wrapTextWithIcons(ctx: any, text: string, maxWidth: number, fontS
     } else {
       if (currentLine) {
         lines.push(currentLine);
-        currentLine = word;
+        currentLine = token;
       } else {
-        // 單個詞就超過寬度，強制換行
-        lines.push(word);
+        // 單個token就超過寬度，需要進一步處理
+        // 檢查是否包含圖標，如果包含則嘗試在圖標前後換行
+        const iconRegex = /__ICON_(buff|debuff|status|cc)_([^_]+)_([^*]+?)__/g;
+        if (iconRegex.test(token)) {
+          // 包含圖標的token，嘗試在圖標前後分割
+          const parts = token.split(/(__ICON_(?:buff|debuff|status|cc)_[^_]+_[^*]+?__)/);
+          for (const part of parts) {
+            if (part.trim()) {
+              const partWidth = measureTextWithIcons(ctx, part, fontScaleRatio);
+              if (partWidth <= maxWidth) {
+                lines.push(part);
+              } else {
+                // 如果單個部分仍然超過寬度，嘗試按字符分割（針對中文）
+                if (part.length > 1) {
+                  let charLine = '';
+                  for (const char of part) {
+                    const charTestLine = charLine + char;
+                    const charWidth = measureTextWithIcons(ctx, charTestLine, fontScaleRatio);
+                    if (charWidth <= maxWidth) {
+                      charLine = charTestLine;
+                    } else {
+                      if (charLine) {
+                        lines.push(charLine);
+                        charLine = char;
+                      } else {
+                        lines.push(char);
+                      }
+                    }
+                  }
+                  if (charLine) {
+                    lines.push(charLine);
+                  }
+                } else {
+                  lines.push(part);
+                }
+              }
+            }
+          }
+        } else {
+          // 不包含圖標的token，嘗試按字符分割（針對中文）
+          if (token.length > 1) {
+            let charLine = '';
+            for (const char of token) {
+              const charTestLine = charLine + char;
+              const charWidth = measureTextWithIcons(ctx, charTestLine, fontScaleRatio);
+              if (charWidth <= maxWidth) {
+                charLine = charTestLine;
+              } else {
+                if (charLine) {
+                  lines.push(charLine);
+                  charLine = char;
+                } else {
+                  lines.push(char);
+                }
+              }
+            }
+            if (charLine) {
+              lines.push(charLine);
+            }
+          } else {
+            lines.push(token);
+          }
+        }
       }
     }
   }
@@ -2075,7 +2153,7 @@ async function drawFormattedLine(ctx: any, line: string, startX: number, y: numb
                 currentX += textWidth;
               } else {
                 const boldText = boldParts[k].replace('__', '');
-                ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+                ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
                 ctx.fillStyle = '#cccccc';
                 ctx.fillText(boldText, currentX, y);
                 currentX += ctx.measureText(boldText).width;
@@ -2090,7 +2168,7 @@ async function drawFormattedLine(ctx: any, line: string, startX: number, y: numb
         currentX += iconWidth;
 
         // 繪製圖標文字
-        ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+        ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
         if (iconType === 'buff') {
           ctx.fillStyle = 'rgb(255, 79, 50)';
         } else if (iconType === 'debuff') {
@@ -2102,8 +2180,15 @@ async function drawFormattedLine(ctx: any, line: string, startX: number, y: numb
         } else {
           ctx.fillStyle = iconColor;
         }
-        ctx.fillText(text, currentX, y);
-        currentX += ctx.measureText(text).width;
+
+        // 處理 FormChange='文字' 格式，在繪製時替換
+        let displayText = text;
+        if (displayText.includes("FormChange='")) {
+          displayText = displayText.replace(/FormChange='(.*?)'/g, '$1');
+        }
+
+        ctx.fillText(displayText, currentX, y);
+        currentX += ctx.measureText(displayText).width;
 
         lastIndex = match.index + match[0].length;
       }
@@ -2119,17 +2204,24 @@ async function drawFormattedLine(ctx: any, line: string, startX: number, y: numb
               currentX += textWidth;
             } else {
               const boldText = boldParts[k].replace('__', '');
-              ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+
+              // 處理 FormChange='文字' 格式，在繪製時替換
+              let displayBoldText = boldText;
+              if (displayBoldText.includes("FormChange='")) {
+                displayBoldText = displayBoldText.replace(/FormChange='(.*?)'/g, '$1');
+              }
+
+              ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
               ctx.fillStyle = '#cccccc';
-              ctx.fillText(boldText, currentX, y);
-              currentX += ctx.measureText(boldText).width;
+              ctx.fillText(displayBoldText, currentX, y);
+              currentX += ctx.measureText(displayBoldText).width;
             }
           }
         }
       }
     } else {
       // 粗體文字（在**之間的部分）
-      ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+      ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
       ctx.fillStyle = iconColor;
       ctx.fillText(currentPart, currentX, y);
       currentX += ctx.measureText(currentPart).width;
@@ -2139,12 +2231,12 @@ async function drawFormattedLine(ctx: any, line: string, startX: number, y: numb
   // 如果沒有找到任何圖標，確保普通文本使用正確的顏色
   if (iconMatches.length === 0) {
     // 重置為普通文本顏色
-    ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+    ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
     ctx.fillStyle = '#cccccc';
   }
 
   // 重置字體狀態
-  ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+  ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
   ctx.fillStyle = '#cccccc';
 
   return currentX;
@@ -2160,7 +2252,7 @@ function measureTextWithSpecialSymbols(ctx: any, text: string, fontScaleRatio: n
 
     if (char === '-' || char === '※') {
       // 特殊符號：非粗體
-      ctx.font = `normal ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+      ctx.font = `normal ${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
       totalWidth += ctx.measureText(char).width;
     } else {
       // 普通字符：找到連續的非特殊符號
@@ -2173,7 +2265,7 @@ function measureTextWithSpecialSymbols(ctx: any, text: string, fontScaleRatio: n
 
       if (normalText) {
         // 普通文字：粗體
-        ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+        ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
         totalWidth += ctx.measureText(normalText).width;
         i = j - 1; // j-1 因為循環最後會i++
       }
@@ -2195,7 +2287,7 @@ function drawTextWithSpecialSymbols(ctx: any, text: string, x: number, y: number
 
     if (char === '-' || char === '※') {
       // 特殊符號：非粗體，透明度較高
-      ctx.font = `normal ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+      ctx.font = `normal ${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
       ctx.fillStyle = normalColor + '80'; // 添加透明度 (50%)
       ctx.fillText(char, currentX, y);
       currentX += ctx.measureText(char).width;
@@ -2209,11 +2301,17 @@ function drawTextWithSpecialSymbols(ctx: any, text: string, x: number, y: number
       }
 
       if (normalText) {
+        // 處理 FormChange='文字' 格式，在繪製時替換
+        let displayText = normalText;
+        if (displayText.includes("FormChange='")) {
+          displayText = displayText.replace(/FormChange='(.*?)'/g, '$1');
+        }
+
         // 普通文字：粗體，正常透明度
-        ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+        ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
         ctx.fillStyle = normalColor;
-        ctx.fillText(normalText, currentX, y);
-        currentX += ctx.measureText(normalText).width;
+        ctx.fillText(displayText, currentX, y);
+        currentX += ctx.measureText(displayText).width;
         i = j - 1; // j-1 因為循環最後會i++
       }
     }
@@ -2260,7 +2358,7 @@ async function drawSkillCard(
   ctx.fill();
 
   // 等級標示 - 顯示指定等級（不縮放）
-  ctx.font = 'bold 22px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = '22px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   ctx.fillStyle = '#888888';
   ctx.textAlign = 'right';
 
@@ -2291,13 +2389,13 @@ async function drawSkillCard(
   }
 
   // 技能標題 - 往下20px（不縮放）
-  ctx.font = 'bold 32px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = '32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.fillText(skill.Name, iconX + iconSize + 15, iconY + 35);
 
   // 技能類型、消耗、持續時間和射程 - 與標題間隔10px（不縮放）
-  ctx.font = 'italic bold 24px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = 'italic 24px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   ctx.fillStyle = '#cccccc';
 
   let currentX = iconX + iconSize + 15;
@@ -2357,7 +2455,7 @@ async function drawSkillCard(
   let lineY = iconY + iconSize + 30 + (hasInfo ? 20 : 0); // 描述在圖標下面，間隔25px
 
   if (skill.Desc) {
-    ctx.font = `bold ${Math.floor(24 * fontScaleRatio)}px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif`;
+    ctx.font = `${Math.floor(24 * fontScaleRatio)}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
     ctx.fillStyle = '#cccccc';
 
     // 計算最高等級
@@ -2489,11 +2587,14 @@ async function drawSkillCard(
       return `**__ICON_${iconType}_${iconKey}_${processedText}__**`;
     });
 
+    // FormChange='圓形領域' 替換成 圓形領域 - 移到 fillText 階段處理
+    // desc = desc.replace(/FormChange='(.*?)'/g, '$1');
+
     // 步驟2：按換行符分割文字，現在所有的圖標標記都已經完整
     const lines = desc.split('\n');
 
     // 步驟3：設置最大寬度，用於後續的寬度計算和換行處理
-    const maxWidth = width - 40; // 使用全寬度減去左右邊距，與calculateSkillCardHeight保持一致
+    const maxWidth = width - 60; // 使用更小的寬度以確保文本能夠正確換行，與calculateSkillCardHeight保持一致
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
@@ -2648,6 +2749,13 @@ async function calculateSkillCardHeight(ctx: any, width: number, skill: any, ski
     // 將連續的換行符替換為單個換行符
     desc = desc.replace(/\n\n+/g, '\n');
 
+    // 清理翻譯文本中的前綴
+    desc = desc.replace(/Public_/g, '');
+    desc = desc.replace(/Buff_/g, '');
+    desc = desc.replace(/Debuff_/g, '');
+    desc = desc.replace(/Special_/g, '');
+    desc = desc.replace(/CC_/g, '');
+
     // 步驟1：先將所有的圖標標記都轉換完成，避免被換行符截斷
     // 將圖標文字中的換行符替換為特殊標記
     desc = desc.replace(/\*\*__ICON_(buff|debuff|status|cc)_([^_]+)_([^*\n]+?)__\*\*/g, (match: string, iconType: string, iconKey: string, text: string) => {
@@ -2656,12 +2764,15 @@ async function calculateSkillCardHeight(ctx: any, width: number, skill: any, ski
       return `**__ICON_${iconType}_${iconKey}_${processedText}__**`;
     });
 
+    // FormChange='圓形領域' 替換成 圓形領域
+    desc = desc.replace(/FormChange='(.*?)'/g, '$1');
+
     // 步驟2：按換行符分割文字，現在所有的圖標標記都已經完整
     const lines = desc.split('\n');
 
     // 步驟3：設置字體和最大寬度，用於後續的寬度計算和換行處理
-    ctx.font = 'bold 24px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
-    const maxWidth = width - 40; // 使用全寬度減去左右邊距，適當調整避免過早換行
+    ctx.font = '24px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
+    const maxWidth = width - 60; // 使用更小的寬度以確保文本能夠正確換行，與drawSkillCard保持一致
 
     for (const line of lines) {
       if (line.trim() === '') {
@@ -2929,7 +3040,7 @@ async function drawStatIcon(ctx: any, x: number, y: number, size: number, iconTy
 // 繪製技能信息標籤的輔助函數
 async function drawSkillInfoPill(ctx: any, x: number, y: number, text: string, iconType: string): Promise<number> {
   // 計算文字寬度，動態調整標籤寬度 - 使用更大的字體
-  ctx.font = 'bold 16px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = '16px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   const textWidth = ctx.measureText(text).width;
   const pillWidth = Math.max(70, textWidth + 40); // 增大最小寬度和內邊距
   const pillHeight = 28; // 增大標籤高度
@@ -2959,7 +3070,7 @@ async function drawSkillInfoPill(ctx: any, x: number, y: number, text: string, i
   }
 
   // 繪製文字 - 使用更大的字體
-  ctx.font = 'bold 17px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = '17px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.fillText(text, x + 30, y + 20); // 調整文字位置
@@ -2970,7 +3081,7 @@ async function drawSkillInfoPill(ctx: any, x: number, y: number, text: string, i
 // 繪製技能信息標籤的輔助函數（使用 webp 圖標）
 async function drawSkillInfoPillWithWebp(ctx: any, x: number, y: number, text: string, iconName: string): Promise<number> {
   // 計算文字寬度，動態調整標籤寬度 - 使用更大的字體
-  ctx.font = 'bold 16px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = '16px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   const textWidth = ctx.measureText(text).width;
   const pillWidth = Math.max(70, textWidth + 50); // 增大最小寬度和內邊距
   const pillHeight = 28; // 增大標籤高度
@@ -2998,7 +3109,7 @@ async function drawSkillInfoPillWithWebp(ctx: any, x: number, y: number, text: s
   }
 
   // 繪製文字 - 使用更大的字體
-  ctx.font = 'bold 17px Nexon, "Noto Sans TC", "Noto Sans JP", sans-serif';
+  ctx.font = '17px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.fillText(text, x + 33, y + 20); // 調整文字位置3

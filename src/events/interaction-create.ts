@@ -1,8 +1,8 @@
 import { ApplicationCommandOptionType, ChannelType, EmbedBuilder, Events, MessageFlags, WebhookClient, Interaction, ChatInputCommandInteraction } from 'discord.js';
-import { client, commands } from '@/index';
+import { client, commands } from '@/index.js';
 
-import { failedReply } from '@/utilities';
-import Logger from '@/utilities/core/logger';
+import { failedReply } from '@/utilities/index.js';
+import Logger from '@/utilities/core/logger.js';
 
 const webhook = process.env.CMD_WEBHOOK ? new WebhookClient({ url: process.env.CMD_WEBHOOK }) : null;
 
@@ -27,14 +27,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
     const args: string[] = [];
 
-    for (let option of interaction.options.data) {
-      if (option.type === ApplicationCommandOptionType.Subcommand) {
-        if (option.name) args.push(option.name);
-        option.options?.forEach((x) => {
-          if (x.value) args.push(x.value.toString());
-        });
-      } else if (option.value) args.push(option.value.toString());
-    }
+    // for (let option of interaction.options.data) {
+    //   if (option.type === ApplicationCommandOptionType.Subcommand) {
+    //     if (option.name) args.push(option.name);
+    //     option.options?.forEach((x) => {
+    //       if (x.value) args.push(x.value.toString());
+    //     });
+    //   } else if (option.value) args.push(option.value.toString());
+    // }
 
     try {
       await command.execute(interaction as ChatInputCommandInteraction, ...args);

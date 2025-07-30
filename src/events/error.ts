@@ -1,7 +1,7 @@
 import { WebhookClient, EmbedBuilder } from 'discord.js';
-import { client } from '@/index';
+import { client } from '@/index.js';
 
-import Logger from '@/utilities/core/logger';
+import Logger from '@/utilities/core/logger.js';
 
 const webhook = process.env.ERR_WEBHOOK ? new WebhookClient({ url: process.env.ERR_WEBHOOK }) : null;
 

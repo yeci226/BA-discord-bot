@@ -1,6 +1,6 @@
 import { Events, Interaction } from 'discord.js';
-import { getStudentsData } from '@/utilities/ba';
-import { client } from '@/index';
+import { getStudentsData } from '@/utilities/ba/index.js';
+import { client } from '@/index.js';
 
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (!interaction.isAutocomplete()) return;

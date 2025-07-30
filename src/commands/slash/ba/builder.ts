@@ -1,11 +1,14 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
-import { drawInQueueReply } from '@/utilities';
-import { getStudentsData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate } from '@/utilities/ba';
+import { drawInQueueReply } from '@/utilities/index.js';
+import { getStudentsData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate } from '@/utilities/ba/index.js';
 import Queue from 'queue';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
-GlobalFonts.registerFromPath(join(process.cwd(), 'public', 'font', 'NEXONFootballGothicBA1.woff2'), 'Nexon');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'NEXONFootballGothicBA1.woff2'), 'Nexon');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'SourceHanSansTC-Regular.otf'), 'SourceHanSansTC');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'SourceHanSans-Regular.otf'), 'SourceHanSans');
+
 const drawQueue = new Queue({ autostart: true });
 
 async function getRandomBackground(): Promise<string> {
@@ -297,7 +300,7 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
 
-    ctx.font = '900 52px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '900 52px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.lineWidth = 3;
     ctx.textAlign = 'center';
@@ -466,7 +469,7 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
             ctx.restore();
 
             const text = student.Name;
-            ctx.font = 'bold 22px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+            ctx.font = 'bold 22px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
             ctx.textAlign = 'left';
 
             const textMetrics = ctx.measureText(text);
@@ -580,13 +583,13 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
         } else {
           // 學生不存在的情況
           ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-          ctx.font = 'bold 20px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+          ctx.font = 'bold 20px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('UNKNOWN', slotX + slotSize / 2, slotY + 10 + slotSize / 2);
         }
       } else {
         ctx.fillStyle = 'rgba(204, 204, 204, 0.8)';
-        ctx.font = 'italic 32px Nexon';
+        ctx.font = 'italic 32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('EMPTY', slotX + slotSize / 2, slotY + 10 + slotSize / 2);
       }
@@ -599,7 +602,7 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
 
-      ctx.font = 'bold 22px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+      ctx.font = 'bold 22px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
       ctx.lineWidth = 3;
       ctx.textAlign = 'center';

@@ -1,7 +1,7 @@
 import { Events, ActivityType } from 'discord.js';
 import { client, cluster } from '@/index.js';
 
-import Logger from '@/utilities/core/logger';
+import Logger from '@/utilities/core/logger.js';
 
 async function updatePresence() {
   const results = await cluster.broadcastEval((c) => c.guilds.cache.size);

@@ -1,7 +1,6 @@
 import { join, extname } from 'path';
 import { readdir } from 'fs/promises';
 import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction, InteractionReplyOptions, ColorResolvable, Interaction, AutocompleteInteraction, Locale } from 'discord.js';
-import { database } from '@/index';
 
 /**
  * @description 獲取指定目錄下的所有 .js 文件
@@ -29,9 +28,10 @@ export async function getAllFiles(dir: string, exts: string[]) {
 /**
  * @description 獲取用戶的語言
  * @param userId - 用戶 ID
+ * @param database - 資料庫實例
  * @returns 用戶的語言 (Hoyolab)
  */
-export async function getUserLang(userId: string) {
+export async function getUserLang(userId: string, database: any) {
   const locale = await database.get(`${userId}.locale`);
   return locale ?? null;
 }

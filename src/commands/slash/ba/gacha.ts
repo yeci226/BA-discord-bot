@@ -1,8 +1,12 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder } from 'discord.js';
-import { drawInQueueReply } from '@/utilities';
-import { getCurrentGachaData, tomorrowResetTime } from '@/utilities/ba';
+import { drawInQueueReply } from '@/utilities/index.js';
+import { getCurrentGachaData, tomorrowResetTime } from '@/utilities/ba/index.js';
 import Queue from 'queue';
-import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
+import { join } from 'path';
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'NunitoSans-Regular.ttf'), 'NunitoSansRegular');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'SourceHanSansTC-Regular.otf'), 'SourceHanSansTC');
+GlobalFonts.registerFromPath(join(process.cwd(), 'src', 'font', 'SourceHanSans-Regular.otf'), 'SourceHanSans');
 
 const drawQueue = new Queue({ autostart: true });
 
@@ -104,7 +108,7 @@ async function drawCurrentGachaImage(gachaData: any) {
     ctx.shadowOffsetY = 2;
 
     // 繪製主標題（帶邊框）
-    ctx.font = '900 52px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '900 52px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.lineWidth = 3;
     ctx.textAlign = 'center';
@@ -113,7 +117,7 @@ async function drawCurrentGachaImage(gachaData: any) {
     ctx.fillText('特選招募', 600, 90);
 
     // 繪製伺服器名稱（帶邊框）
-    ctx.font = '900 40px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '900 40px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.strokeText(gachaData.server, 600, 135);
     ctx.fillStyle = '#f0f0f0';
     ctx.fillText(gachaData.server, 600, 135);
@@ -169,7 +173,7 @@ async function drawCurrentGachaImage(gachaData: any) {
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 3;
 
-    ctx.font = '900 36px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = '900 36px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
 
@@ -318,7 +322,7 @@ async function drawCharacterImage(ctx: any, character: any, imageX: number, imag
     ctx.closePath();
     ctx.fill();
 
-    ctx.font = 'bold 32px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif';
+    ctx.font = 'bold 32px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.fillText(character.name.charAt(0), imageX + imageWidth / 2, imageY + imageHeight / 2 + 10);
@@ -363,7 +367,7 @@ function drawCharacterName(ctx: any, character: any, imageX: number, imageY: num
   let textWidth = 0;
 
   while (fontSize > minFontSize) {
-    ctx.font = `bold ${fontSize}px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif`;
+    ctx.font = `bold ${fontSize}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
     textWidth = ctx.measureText(character.name).width;
 
     if (textWidth <= maxWidth) {
@@ -375,7 +379,7 @@ function drawCharacterName(ctx: any, character: any, imageX: number, imageY: num
 
   if (fontSize <= minFontSize) {
     fontSize = minFontSize;
-    ctx.font = `bold ${fontSize}px "Nunito Sans", "Noto Sans TC", "Noto Sans JP", sans-serif`;
+    ctx.font = `bold ${fontSize}px Nexon, "SourceHanSansTC", "SourceHanSans", sans-serif`;
   }
 
   const textHeight = fontSize + 12;

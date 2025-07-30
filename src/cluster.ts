@@ -1,9 +1,15 @@
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
 dotenv.config();
 
 import { ClusterManager, HeartbeatManager } from 'discord-hybrid-sharding';
 
-import Logger from '@/utilities/core/logger';
+import Logger from '@/utilities/core/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * @description 分片管理器
@@ -12,7 +18,6 @@ const clusterManager = new ClusterManager(`${__dirname}/index.js`, {
   totalShards: 'auto',
   totalClusters: 5,
   mode: 'worker',
-  execArgv: ['-r', 'ts-node/register'],
   token: process.env.NODE_ENV === 'dev' ? process.env.TEST_TOKEN : process.env.TOKEN,
   restarts: {
     max: 5,
