@@ -172,8 +172,9 @@ export async function getCurrentGachaData(server: string) {
 // 重置時間計算
 export function tomorrowResetTime(): string {
   const now = new Date();
+
   const todayReset = new Date(now);
-  todayReset.setHours(3, 0, 0, 0);
+  todayReset.setHours(19, 0, 0, 0);
 
   const resetTime =
     now < todayReset
@@ -181,7 +182,7 @@ export function tomorrowResetTime(): string {
       : (() => {
           const tomorrow = new Date(now);
           tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(3, 0, 0, 0);
+          tomorrow.setHours(19, 0, 0, 0);
           return tomorrow;
         })();
 
