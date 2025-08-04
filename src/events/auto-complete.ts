@@ -10,7 +10,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   const { name: optionName, value: searchValue } = focusedOption;
 
   // 處理角色選擇的自動完成
-  if (optionName.startsWith('main') || optionName.startsWith('support') || optionName === 'student') {
+  if (optionName.startsWith('main') || optionName.startsWith('support') || optionName === 'student' || optionName === 'target') {
     const studentsData = await getStudentsData();
 
     let filteredStudents: any[] = [];
@@ -18,6 +18,9 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     if (optionName === 'student') {
       // 對於 student 命令，顯示所有已發布的學生
       filteredStudents = Object.values(studentsData);
+    } else if (optionName === 'target') {
+      // 對於 pull 命令，只顯示3星角色
+      filteredStudents = Object.values(studentsData).filter((s: any) => s.StarGrade === 3);
     } else {
       // 對於 builder 命令，根據小隊類型過濾
       const squadType = optionName.startsWith('main') ? 'Main' : 'Support';
