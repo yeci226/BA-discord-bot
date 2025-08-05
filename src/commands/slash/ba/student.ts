@@ -1,6 +1,16 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, MessageFlags } from 'discord.js';
 import { drawInQueueReply } from '@/utilities/index.js';
-import { getStudentsData, getEquipmentData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate, smartTranslateBatch, SQUAD_TYPE_COLORS } from '@/utilities/ba/index.js';
+import {
+  getTWStudentsData,
+  getEquipmentData,
+  tomorrowResetTime,
+  ARMOR_TYPE_COLORS,
+  BULLET_TYPE_COLORS,
+  smartTranslate,
+  smartTranslateBatch,
+  SQUAD_TYPE_COLORS,
+  getKivoStudentDataByCNName,
+} from '@/utilities/ba/index.js';
 import Queue from 'queue';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';
@@ -226,7 +236,7 @@ export default {
       });
     }
 
-    const studentsData = await getStudentsData();
+    const studentsData = await getTWStudentsData();
     const invalidStudents = [studentId].filter((char) => !studentsData[char]);
 
     if (invalidStudents.length > 0) {
@@ -273,10 +283,22 @@ export default {
         }
 
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'student_detail.png' });
+
+        // 創建 SelectMenu
+        const selectMenu = new StringSelectMenuBuilder()
+          .setCustomId('student_action_menu')
+          .setPlaceholder('選擇操作')
+          .addOptions(new StringSelectMenuOptionBuilder().setLabel('回憶大廳').setValue(`memory_hall-${studentId}`).setEmoji('🧸'))
+          .addOptions(new StringSelectMenuOptionBuilder().setLabel('卡池Banner').setValue(`gacha_banner-${studentId}`).setEmoji('🎰'))
+          .addOptions(new StringSelectMenuOptionBuilder().setLabel('介紹圖').setValue(`introduction_image-${studentId}`).setEmoji('🖼️'));
+
+        const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+
         interaction.editReply({
           content: tomorrowResetTime(),
           embeds: [],
           files: [attachment],
+          components: [row],
         });
       } catch (error) {
         console.error(error);
@@ -836,7 +858,7 @@ async function drawStudentDetailImage(
     const canvas = createCanvas(2100, 1200);
     const ctx = canvas.getContext('2d');
 
-    const studentsData = await getStudentsData();
+    const studentsData = await getTWStudentsData();
     const student = studentsData[studentId];
 
     if (!student) {
@@ -3147,4 +3169,47 @@ function drawHexagonIcon(ctx: any, x: number, y: number, size: number, color: st
   ctx.fill();
 
   ctx.restore(); // 恢復之前保存的狀態
+}
+
+// 处理 SelectMenu 交互
+export async function handleStudentActionMenu(interaction: any) {
+  if (interaction.customId !== 'student_action_menu') return;
+  const selectedValue = interaction.values[0];
+
+  if (selectedValue.startsWith('memory_hall-')) {
+    try {
+      // 從原始消息中獲取學生ID
+      const studentId = selectedValue.split('-')[1];
+
+      if (!studentId) {
+        return interaction.followUp({
+          embeds: [
+            new EmbedBuilder().setColor('#E76161').setTitle('無法找到學生ID，請重新執行命令！').setThumbnail('https://cdnimg-v2.gamekee.com/wiki2.0/images/w_240/h_240/215/43637/2025/3/1/543385.gif'),
+          ],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      const kivoStudent = await getKivoStudentDataByCNName(studentId);
+      interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`${kivoStudent.given_name_zh_tw}${kivoStudent.skin_zh_tw ? `(${kivoStudent.skin_zh_tw})` : ''} 回憶大廳`)
+            .setImage(kivoStudent.recollection_lobby_image.startsWith('//') ? `https:${kivoStudent.recollection_lobby_image}` : kivoStudent.recollection_lobby_image),
+        ],
+      });
+    } catch (error) {
+      console.error('處理回憶大廳時發生錯誤:', error);
+      interaction.followUp({
+        embeds: [
+          new EmbedBuilder()
+            .setColor('#E76161')
+            .setTitle('處理回憶大廳時發生錯誤！')
+            .setDescription(`錯誤信息：${error}`)
+            .setThumbnail('https://cdnimg-v2.gamekee.com/wiki2.0/images/w_240/h_240/215/43637/2025/3/1/543385.gif'),
+        ],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  }
 }

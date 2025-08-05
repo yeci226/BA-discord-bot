@@ -17,6 +17,7 @@ import type { MessageCommand, SlashCommand } from '@/types';
 // Utilities
 import { getAllFiles } from '@/utilities/index.js';
 import Logger from '@/utilities/core/logger.js';
+import { preloadCommonData } from '@/utilities/ba/index.js';
 
 /**
  * @description Discord 客戶端
@@ -130,6 +131,14 @@ export async function load() {
 
   client.on('ready', async () => {
     await client.application?.commands.set(slashCommands);
+
+    // 預加載常用數據
+    try {
+      await preloadCommonData();
+      new Logger('系統').success('常用數據預加載完成');
+    } catch (error) {
+      new Logger('系統').error(`預加載數據失敗: ${error}`);
+    }
   });
 }
 

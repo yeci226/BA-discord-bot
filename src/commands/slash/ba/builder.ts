@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, AttachmentBuilder, MessageFlags } from 'discord.js';
 import { drawInQueueReply } from '@/utilities/index.js';
-import { getStudentsData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate } from '@/utilities/ba/index.js';
+import { getTWStudentsData, tomorrowResetTime, ARMOR_TYPE_COLORS, BULLET_TYPE_COLORS, smartTranslate } from '@/utilities/ba/index.js';
 import Queue from 'queue';
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { join } from 'path';
@@ -202,7 +202,7 @@ export default {
     });
 
     // 驗證所有選擇的學生是否存在
-    const studentsData = await getStudentsData();
+    const studentsData = await getTWStudentsData();
     const invalidStudents = selectedCharacters.filter((char) => !studentsData[char.id]);
 
     if (invalidStudents.length > 0) {
@@ -265,7 +265,7 @@ async function drawTeamBuildImage(selectedCharacters: any[] = [], teamName?: str
     const canvas = createCanvas(1400, 400);
     const ctx = canvas.getContext('2d');
 
-    const studentsData = await getStudentsData();
+    const studentsData = await getTWStudentsData();
 
     if (enableBackground) {
       const backgroundImage = await loadImage(`./public/background/${await getRandomBackground()}`);
