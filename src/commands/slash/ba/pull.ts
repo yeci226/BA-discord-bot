@@ -477,7 +477,7 @@ export default {
         const targetStudent = studentsData[targetStudentId];
 
         await interaction.editReply({
-          content: `-# 招募目標: ${targetStudent.Name} | 已使用 ${previousPoints.stones}${emoji.stone}`,
+          content: `-# ${interaction.user.username} 的招募目標: ${targetStudent.Name} | 已使用 ${previousPoints.stones}${emoji.stone}`,
           embeds: [animationEmbed],
         });
 

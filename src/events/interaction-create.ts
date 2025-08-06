@@ -3,6 +3,7 @@ import { client, commands } from '@/index.js';
 
 import { failedReply } from '@/utilities/index.js';
 import Logger from '@/utilities/core/logger.js';
+import { getVideoPaths } from '@/utilities/ba/video.js';
 import { getTWStudentsData } from '@/utilities/ba/index.js';
 import { handleStudentActionMenu } from '@/commands/slash/ba/student.js';
 import {
@@ -73,7 +74,6 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         const updatedPoints = updateUserRecruitmentPoints(userId, finalTargetStudentId, 10, pullResult.results);
 
         // 獲取影片路徑
-        const { getVideoPaths } = await import('@/utilities/ba/video.js');
         const videoPaths = getVideoPaths();
 
         // 根據是否抽到三星選擇動畫
@@ -113,7 +113,10 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         };
 
         // 同時開始繪製圖片和等待動畫，確保圖片繪製完成後再顯示結果
-        const imageBuffer = await drawPullResultImage(pullResult, mixedPoints);
+        const [imageBuffer] = await Promise.all([
+          drawPullResultImage(pullResult, mixedPoints),
+          new Promise((resolve) => setTimeout(resolve, 7400)), // 等待時間改為7.4秒
+        ]);
 
         if (!imageBuffer) {
           return interaction.followUp({
@@ -144,11 +147,28 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
         // 編輯動畫消息來顯示結果
         await animationMessage.edit({
-          content: `-# 招募目標: ${targetStudent.Name} | 已使用 ${updatedPoints.stones}${emoji.stone}${statsDisplay}`,
+          content: `-# ${interaction.user.username} 的招募目標: ${targetStudent.Name} | 已使用 ${updatedPoints.stones}${emoji.stone}${statsDisplay}`,
           embeds: [],
           files: [attachment],
           components: [row],
         });
+
+        // 發送webhook消息
+        if (webhook) {
+          webhook.send({
+            embeds: [
+              new EmbedBuilder()
+                .setTimestamp()
+                .setAuthor({
+                  iconURL: interaction.user.displayAvatarURL({ size: 4096 }),
+                  name: `${interaction.user.username} - ${interaction.user.id}`,
+                })
+                .setThumbnail(interaction.guild?.iconURL() ?? null)
+                .setDescription(`\`\`\`${interaction.guild?.name} - ${interaction.guild?.id}\`\`\``)
+                .addFields({ name: '再抽十抽', value: '\u200b', inline: true }),
+            ],
+          });
+        }
       } catch (error: any) {
         new Logger('按鈕').error(`再來一次按鈕錯誤：${error.message}`);
         await interaction.followUp({
