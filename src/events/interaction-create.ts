@@ -1,4 +1,17 @@
-import { ChannelType, EmbedBuilder, Events, MessageFlags, WebhookClient, Interaction, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder } from 'discord.js';
+import {
+  ChannelType,
+  EmbedBuilder,
+  Events,
+  MessageFlags,
+  WebhookClient,
+  Interaction,
+  ChatInputCommandInteraction,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  AttachmentBuilder,
+  PermissionsBitField,
+} from 'discord.js';
 import { client, commands } from '@/index.js';
 
 import { failedReply } from '@/utilities/index.js';
@@ -19,6 +32,37 @@ import emoji from '@/emoji.js';
 
 const webhook = process.env.CMD_WEBHOOK ? new WebhookClient({ url: process.env.CMD_WEBHOOK }) : null;
 
+// 權限檢查函數
+async function checkBotPermissions(interaction: Interaction): Promise<boolean> {
+  if (!interaction.guild || !interaction.channel || interaction.channel.type === ChannelType.DM) return false;
+
+  const botMember = interaction.guild.members.cache.get(client.user!.id);
+  if (!botMember) return false;
+
+  const requiredPermissions = [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ViewChannel];
+
+  try {
+    const hasPermissions = botMember.permissionsIn(interaction.channel as any).has(requiredPermissions);
+
+    if (!hasPermissions) {
+      try {
+        await (interaction as any).followUp({
+          content: '❌ 彩奈需要以下權限才能正常運作：\n• 查看頻道\n• 發送訊息\n\n請聯繫伺服器管理員開啟這些權限',
+          flags: MessageFlags.Ephemeral,
+        });
+      } catch (error) {
+        new Logger('權限').error(`無法發送權限不足訊息：${error}`);
+      }
+    }
+
+    return hasPermissions;
+  } catch (error) {
+    // 如果權限檢查失敗，記錄錯誤並返回 false
+    new Logger('權限').error(`權限檢查失敗：${error}`);
+    return false;
+  }
+}
+
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   const interactionUser = interaction.user;
   const interactionGuild = interaction.guild;
@@ -32,6 +76,11 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     // 處理"再來一次"按鈕
     if (interaction.customId.startsWith('pull_again_')) {
       try {
+        // 檢查權限
+        if (!(await checkBotPermissions(interaction))) {
+          return;
+        }
+
         // 從customId中獲取角色ID
         const targetStudentId = interaction.customId.replace('pull_again_', '');
 
@@ -49,7 +98,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
         if (!finalTargetStudentId || !studentsData[finalTargetStudentId]) {
           return interaction.followUp({
-            content: '無法找到目標角色，請重新執行抽卡命令',
+            content: '無法找到目標角色，請老師重新執行抽卡指令',
             flags: MessageFlags.Ephemeral,
           });
         }
@@ -172,7 +221,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       } catch (error: any) {
         new Logger('按鈕').error(`再來一次按鈕錯誤：${error.message}`);
         await interaction.followUp({
-          content: '再來一次時發生錯誤，請重新執行抽卡命令',
+          content: '再來一次時發生錯誤，請老師重新執行抽卡指令',
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -181,6 +230,11 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     // 處理"重製抽數"按鈕
     if (interaction.customId.startsWith('reset_pull_')) {
       try {
+        // 檢查權限
+        if (!(await checkBotPermissions(interaction))) {
+          return;
+        }
+
         // 從customId中獲取角色ID
         const targetStudentId = interaction.customId.replace('reset_pull_', '');
 
@@ -189,13 +243,13 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         manualResetUserRecruitmentPoints(userId, targetStudentId);
 
         await interaction.followUp({
-          content: '已重製抽數！招募點數、已使用石頭及角色統計已歸零。',
+          content: '已重製抽數！招募點數、已使用石頭及角色統計已歸零',
           flags: MessageFlags.Ephemeral,
         });
       } catch (error: any) {
         new Logger('按鈕').error(`重製抽數按鈕錯誤：${error.message}`);
         await interaction.followUp({
-          content: '重製抽數時發生錯誤，請重試',
+          content: '重製抽數時發生錯誤，請老師稍後再試',
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -205,11 +259,16 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isStringSelectMenu()) {
     await interaction.deferUpdate().catch(() => {});
     try {
+      // 檢查權限
+      if (!(await checkBotPermissions(interaction))) {
+        return;
+      }
+
       await handleStudentActionMenu(interaction);
     } catch (error: any) {
       new Logger('SelectMenu').error(`SelectMenu 錯誤：${error.message}`);
       await interaction.followUp({
-        content: '處理選單時發生錯誤，請重試',
+        content: '處理選單時發生錯誤，請老師稍後再試',
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -219,7 +278,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     const command = commands.slash.get(interaction.commandName);
     if (!command)
       return interaction.followUp({
-        content: 'An error has occured',
+        content: '哎呀，好像出了一點小問題，請老師稍後再試',
         flags: MessageFlags.Ephemeral,
       });
 
@@ -235,6 +294,11 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     // }
 
     try {
+      // 檢查權限
+      if (!(await checkBotPermissions(interaction))) {
+        return;
+      }
+
       await command.execute(interaction as ChatInputCommandInteraction, ...args);
       const time = `花費 ${((Date.now() - interaction.createdTimestamp) / 1000).toFixed(2)} 秒`;
 

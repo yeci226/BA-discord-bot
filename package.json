@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm run build && cross-env NODE_ENV=dev node dist/src/cluster.js",
     "start": "npm run build && node dist/src/cluster.js",
-    "build": "tsc && tsc-alias -p tsconfig.json",
+    "build": "rimraf dist && tsc && tsc-alias -p tsconfig.json",
     "lint": "eslint src/**/* --ext .js",
     "fmt": "prettier --write src/**/*.{ts,js,json,yaml,yml}",
     "test": "jest"
@@ -35,6 +35,7 @@
     "quickmongo": "^5.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },

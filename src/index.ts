@@ -91,8 +91,8 @@ async function getSlashCommands(paths: string[]) {
       commands.slash.set(file.data.name, file);
     } else {
       new Logger('系統').error(`${path} 處的指令缺少必要的「資料」或「執行」屬性`);
+      continue;
     }
-    commands.slash.set(file.name, file);
 
     if (file.type === ApplicationCommandType.Message || file.type === ApplicationCommandType.User) {
       delete file.description;
@@ -119,6 +119,14 @@ async function bindEvents(paths: string[]) {
  * @description 載入指令
  */
 export async function load() {
+  // 初始化數據庫
+  try {
+    await database.init();
+    new Logger('系統').success('數據庫初始化完成');
+  } catch (error) {
+    new Logger('系統').error(`數據庫初始化失敗: ${error}`);
+  }
+
   // 斜線指令
   const slashCommandPaths = await getAllFiles(`${__dirname}/commands/slash`, ['.js']);
   const slashCommands = await getSlashCommands(slashCommandPaths);

@@ -208,15 +208,14 @@ async function drawCurrentGachaImage(gachaData: any) {
     }
 
     const formatDate = (date: Date) => {
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-
-      const formattedHours = hours.toString().padStart(2, '0');
-      const formattedMinutes = minutes.toString().padStart(2, '0');
-
-      return `${month}/${day} 上午${formattedHours}:${formattedMinutes} [GMT+8]`;
+      return date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Taipei',
+      });
     };
 
     const timeText = `${formatDate(startDate)} - ${formatDate(endDate)}`;
