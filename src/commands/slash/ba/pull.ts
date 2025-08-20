@@ -169,7 +169,7 @@ export async function getDefaultPUCharacter(server: string): Promise<{ id: strin
       if (puStudent) {
         return {
           id: puCharacter.id.toString(),
-          isLimited: puStudent.IsLimited || 0,
+          isLimited: Array.isArray(puStudent.IsLimited) ? puStudent.IsLimited[1] || 0 : puStudent.IsLimited || 0,
         };
       }
     }
@@ -198,19 +198,28 @@ export class GachaSimulator {
     }
 
     // 根據目標角色的IsLimited值過濾可抽取的角色
-    const targetIsLimited = this.targetStudent.IsLimited || 0;
+    const targetIsLimited = Array.isArray(this.targetStudent.IsLimited) ? this.targetStudent.IsLimited[1] || 0 : this.targetStudent.IsLimited || 0;
     let availableStudents = Object.values(studentsData);
 
     // 根據目標角色的IsLimited值進一步過濾
     if (targetIsLimited === 0) {
       // 目標角色是常駐角色，只出現IsLimited為0的角色
-      availableStudents = availableStudents.filter((s: any) => s.IsLimited === 0);
+      availableStudents = availableStudents.filter((s: any) => {
+        const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+        return isLimited === 0;
+      });
     } else if (targetIsLimited === 1) {
       // 目標角色是IsLimited為1的角色，只出現IsLimited為0和1的角色
-      availableStudents = availableStudents.filter((s: any) => s.IsLimited === 0 || s.IsLimited === 1);
+      availableStudents = availableStudents.filter((s: any) => {
+        const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+        return isLimited === 0 || isLimited === 1;
+      });
     }
 
-    availableStudents = availableStudents.filter((s: any) => s.IsLimited !== 2);
+    availableStudents = availableStudents.filter((s: any) => {
+      const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+      return isLimited !== 2;
+    });
 
     // 構建抽卡資料庫
     this.database = availableStudents.map((student: any) => {
@@ -222,20 +231,35 @@ export class GachaSimulator {
           prob = 0.007; // UP角色占3星總機率的0.7%
           lastProb = 0.007;
         } else {
-          const otherThreeStarCount = availableStudents.filter((s: any) => s.StarGrade === 3 && s.Id !== this.targetStudent.Id).filter((s: any) => s.IsLimited !== 2).length;
+          const otherThreeStarCount = availableStudents
+            .filter((s: any) => s.StarGrade === 3 && s.Id !== this.targetStudent.Id)
+            .filter((s: any) => {
+              const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+              return isLimited !== 2;
+            }).length;
           if (otherThreeStarCount > 0) {
             prob = 0.023 / otherThreeStarCount;
             lastProb = 0.023 / otherThreeStarCount;
           }
         }
       } else if (student.StarGrade === 2) {
-        const twoStarCount = availableStudents.filter((s: any) => s.StarGrade === 2).filter((s: any) => s.IsLimited !== 2).length;
+        const twoStarCount = availableStudents
+          .filter((s: any) => s.StarGrade === 2)
+          .filter((s: any) => {
+            const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+            return isLimited !== 2;
+          }).length;
         if (twoStarCount > 0) {
           prob = 0.155 / twoStarCount;
           lastProb = 0.94 / twoStarCount;
         }
       } else if (student.StarGrade === 1) {
-        const oneStarCount = availableStudents.filter((s: any) => s.StarGrade === 1).filter((s: any) => s.IsLimited !== 2).length;
+        const oneStarCount = availableStudents
+          .filter((s: any) => s.StarGrade === 1)
+          .filter((s: any) => {
+            const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+            return isLimited !== 2;
+          }).length;
         if (oneStarCount > 0) {
           prob = 0.785 / oneStarCount;
           lastProb = 0;
@@ -276,7 +300,7 @@ export class GachaSimulator {
             Id: item.Id,
             Name: item.Name,
             StarGrade: item.StarGrade,
-            IsLimited: item.IsLimited,
+            IsLimited: Array.isArray(item.IsLimited) ? item.IsLimited[1] || 0 : item.IsLimited || 0,
           };
           break;
         }
@@ -290,14 +314,17 @@ export class GachaSimulator {
     const dataTemp = JSON.parse(JSON.stringify(this.database));
     this.fisherYatesShuffle(dataTemp);
     // 排除 Limited = 2 的角色，只抽取 Limited = 0 和 1 的三星角色
-    const threeStarStudents = dataTemp.filter((s: any) => s.StarGrade === 3 && s.IsLimited !== 2);
+    const threeStarStudents = dataTemp.filter((s: any) => {
+      const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+      return s.StarGrade === 3 && isLimited !== 2;
+    });
     const index = Math.floor(Math.random() * threeStarStudents.length);
     const item = threeStarStudents[index];
     return {
       Id: item.Id,
       Name: item.Name,
       StarGrade: item.StarGrade,
-      IsLimited: item.IsLimited,
+      IsLimited: Array.isArray(item.IsLimited) ? item.IsLimited[1] || 0 : item.IsLimited || 0,
     };
   }
 
@@ -331,7 +358,10 @@ export class GachaSimulator {
       // 保底2星：從2星角色中隨機選擇一個
       const dataTemp = JSON.parse(JSON.stringify(this.database));
       this.fisherYatesShuffle(dataTemp);
-      const twoStarStudents = dataTemp.filter((s: any) => s.StarGrade === 2 && s.IsLimited !== 2);
+      const twoStarStudents = dataTemp.filter((s: any) => {
+        const isLimited = Array.isArray(s.IsLimited) ? s.IsLimited[1] || 0 : s.IsLimited || 0;
+        return s.StarGrade === 2 && isLimited !== 2;
+      });
 
       if (twoStarStudents.length > 0) {
         const index = Math.floor(Math.random() * twoStarStudents.length);
@@ -340,7 +370,7 @@ export class GachaSimulator {
           Id: item.Id,
           Name: item.Name,
           StarGrade: item.StarGrade,
-          IsLimited: item.IsLimited,
+          IsLimited: Array.isArray(item.IsLimited) ? item.IsLimited[1] || 0 : item.IsLimited || 0,
         };
         hasTwoStar = true;
       } else {

@@ -214,17 +214,17 @@ export default {
    */
   async execute(interaction: ChatInputCommandInteraction, ..._args: string[]) {
     const studentId = interaction.options.getString('student');
-    const exSkillLevel = interaction.options.getInteger('ex_skill_level') || 1; // 預設EX技能等級為1
-    const publicSkillLevel = interaction.options.getInteger('public_skill_level') || 1; // 預設基本技能等級為1
-    const passiveSkillLevel = interaction.options.getInteger('passive_skill_level') || 1; // 預設強化技能等級為1
-    const extraPassiveSkillLevel = interaction.options.getInteger('extra_passive_skill_level') || 1; // 預設子技能等級為1
-    const equipment1Level = interaction.options.getInteger('equipment1_level') ?? 0; // 預設裝備1等級為0
-    const equipment2Level = interaction.options.getInteger('equipment2_level') ?? 0; // 預設裝備2等級為0
-    const equipment3Level = interaction.options.getInteger('equipment3_level') ?? 0; // 預設裝備3等級為0
-    const characterLevel = interaction.options.getInteger('character_level') || 1; // 預設角色等級為1
-    const favorLevel = interaction.options.getInteger('favor_level') || 1; // 預設羈絆等級為1
-    const starGrade = interaction.options.getInteger('star_grade') || 3; // 預設星級為3
-    const rawWeaponLevel = interaction.options.getInteger('weapon_level') || 1; // 預設武器等級為1
+    const exSkillLevel = interaction.options.getInteger('ex_skill_level') || 5; // 預設EX技能等級為1
+    const publicSkillLevel = interaction.options.getInteger('public_skill_level') || 10; // 預設基本技能等級為1
+    const passiveSkillLevel = interaction.options.getInteger('passive_skill_level') || 10; // 預設強化技能等級為1
+    const extraPassiveSkillLevel = interaction.options.getInteger('extra_passive_skill_level') || 10; // 預設子技能等級為1
+    const equipment1Level = interaction.options.getInteger('equipment1_level') ?? 10; // 預設裝備1等級為0
+    const equipment2Level = interaction.options.getInteger('equipment2_level') ?? 10; // 預設裝備2等級為0
+    const equipment3Level = interaction.options.getInteger('equipment3_level') ?? 10; // 預設裝備3等級為0
+    const characterLevel = interaction.options.getInteger('character_level') || 90; // 預設角色等級為1
+    const favorLevel = interaction.options.getInteger('favor_level') || 50; // 預設羈絆等級為1
+    const starGrade = interaction.options.getInteger('star_grade') || 9; // 預設星級為3
+    const rawWeaponLevel = interaction.options.getInteger('weapon_level') || 60; // 預設武器等級為1
 
     // 根據星級限制武器等級
     const maxWeaponLevel = getMaxWeaponLevel(starGrade);
@@ -1044,11 +1044,12 @@ async function drawStudentDetailImage(
     // 星級（使用SVG顯示）
     if (starGrade > 0) {
       // 生成限定文字
-      const isLimited = student.IsLimited && student.IsLimited !== 0;
+      const isLimitedValue = Array.isArray(student.IsLimited) ? student.IsLimited[1] || 0 : student.IsLimited || 0;
+      const isLimited = isLimitedValue && isLimitedValue !== 0;
       let limitedText = '';
-      if (student.IsLimited === 3) {
+      if (isLimitedValue === 3) {
         limitedText = '週年';
-      } else if (student.IsLimited === 2) {
+      } else if (isLimitedValue === 2) {
         limitedText = '活動';
       } else if (isLimited) {
         limitedText = '限定';

@@ -198,7 +198,12 @@ async function drawCurrentGachaImage(gachaData: any) {
       endDate = new Date();
     }
 
+    // 获取台北时区的当前时间
     const now = new Date();
+    const taipeiOffset = 8 * 60; // 台北时区 UTC+8
+    const localOffset = now.getTimezoneOffset(); // 本地时区偏移（分钟）
+    const totalOffset = (taipeiOffset + localOffset) * 60 * 1000; // 转换为毫秒
+    const nowTaipei = new Date(now.getTime() + totalOffset);
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       console.error('Invalid date data:', gachaData.start, gachaData.end);
@@ -224,7 +229,7 @@ async function drawCurrentGachaImage(gachaData: any) {
     ctx.strokeText(timeText, 600, 500);
     ctx.fillText(timeText, 600, 500);
 
-    const timeLeft = endDate.getTime() - now.getTime();
+    const timeLeft = endDate.getTime() - nowTaipei.getTime();
 
     if (timeLeft > 0) {
       const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));

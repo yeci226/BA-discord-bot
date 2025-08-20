@@ -172,12 +172,7 @@ function formatContentToText(content: string): string {
     .replace(/<tr[^>]*>(.*?)<\/tr>/gi, '$1\n')
     .replace(/<th[^>]*>(.*?)<\/th>/gi, '**$1** | ')
     .replace(/<td[^>]*>(.*?)<\/td>/gi, '$1 | ')
-    // 將 <br> 和 </p> 轉換為換行
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n')
-    // 將 <p> 轉換為換行（開始標籤）
-    .replace(/<p[^>]*>/gi, '\n')
-    // 處理粗體標籤 <b> 和 <strong>
+    // 處理粗體標籤 <b> 和 <strong> - 優先處理，避免被其他標籤影響
     .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
     .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
     // 處理斜體標籤 <i> 和 <em>
@@ -186,8 +181,8 @@ function formatContentToText(content: string): string {
     // 處理刪除線標籤 <s> 和 <strike>
     .replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~')
     .replace(/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~')
-    // 處理下劃線標籤 <u> (Discord不支持下劃線，轉換為粗體)
-    .replace(/<u[^>]*>(.*?)<\/u>/gi, '**$1**')
+    // 處理下劃線標籤 <u>
+    .replace(/<u[^>]*>(.*?)<\/u>/gi, '__$1__')
     // 處理代碼標籤 <code>
     .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
     // 處理代碼塊標籤 <pre>
@@ -196,10 +191,10 @@ function formatContentToText(content: string): string {
     .replace(/<ul[^>]*>(.*?)<\/ul>/gi, '$1')
     .replace(/<ol[^>]*>(.*?)<\/ol>/gi, '$1')
     .replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n')
-    // 處理標題標籤 (Discord Embed不支持標題，轉換為粗體)
-    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '**$1**\n')
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '**$1**\n')
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '**$1**\n')
+    // 處理標題標籤
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n')
     .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '**$1**\n')
     .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '**$1**\n')
     .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '**$1**\n')
@@ -211,7 +206,12 @@ function formatContentToText(content: string): string {
     .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
     // 處理 div 標籤（移除但保留內容）
     .replace(/<div[^>]*>(.*?)<\/div>/gi, '$1')
-    // 移除其他HTML標籤
+    // 將 <br> 和 </p> 轉換為換行
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    // 將 <p> 轉換成空字串
+    .replace(/<p[^>]*>/gi, '')
+    // 移除其他HTML標籤 - 但保留已經轉換的Markdown格式
     .replace(/<[^>]*>/g, '')
     // 解碼HTML實體
     .replace(/&nbsp;/g, ' ')
@@ -355,9 +355,13 @@ async function checkForNewAnnouncements() {
                 continue;
               }
 
-              // 如果是新貼文或編輯但沒有發送過通知，記錄消息ID
-              if ((hasNewAnnouncement || (hasEdit && !boardData.lastMessageId)) && messageId) {
-                boardData.lastMessageId = messageId;
+              // 記錄消息ID
+              if (messageId) {
+                // 如果是新貼文，或者編輯但沒有記錄過消息ID，則更新lastMessageId
+                if (hasNewAnnouncement || !boardData.lastMessageId) {
+                  boardData.lastMessageId = messageId;
+                }
+                // 注意：如果是編輯且已有lastMessageId，保持原ID不變，這樣才能編輯現有消息
               }
             } catch (error) {
               new Logger('論壇檢查').error(`處理伺服器 ${guildId} 的 ${boardData.boardName} 通知時發生錯誤: ${error}`);

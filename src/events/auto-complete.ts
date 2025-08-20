@@ -101,7 +101,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
 
       // 如果是PU角色，添加標記和伺服器資訊
       if (puCharacterIds.has(student.Id.toString())) {
-        const isLimitedText = student.IsLimited === 0 ? '常駐' : student.IsLimited === 1 ? '限定' : student.IsLimited === 2 ? '活動' : student.IsLimited === 3 ? '週年' : '未知';
+        const isLimited = Array.isArray(student.IsLimited) ? student.IsLimited[1] || 0 : student.IsLimited || 0;
+        const isLimitedText = isLimited === 0 ? '常駐' : isLimited === 1 ? '限定' : isLimited === 2 ? '活動' : isLimited === 3 ? '週年' : '未知';
         const serverText = SERVER_NAME_MAP[student.server] || student.server || 'JP';
         displayName = `[PU-${serverText}-${isLimitedText}] ${displayName}`;
       }
