@@ -44,5 +44,4 @@ clusterManager.on('clusterCreate', (cluster) => {
 
 (async () => {
   await clusterManager.spawn();
-  setInterval(() => clusterManager.broadcastEval(`this.ws.status && this.isReady() ? this.ws.reconnect() : 0`), 60_000);
 })();

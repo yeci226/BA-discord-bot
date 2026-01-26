@@ -1,6 +1,6 @@
 import { Events, ActivityType } from 'discord.js';
 import { client, cluster } from '@/index.js';
-import { startForumChecker } from '@/events/forum-checker.js';
+import { NexonForumService } from '@/services/NexonForumService.js';
 import Logger from '@/utilities/core/logger.js';
 
 async function updatePresence() {
@@ -16,5 +16,7 @@ async function updatePresence() {
 client.on(Events.ClientReady, async () => {
   new Logger('系統').success(`${client.user?.tag} 已經上線！`);
   setInterval(updatePresence, 10000);
-  startForumChecker();
+
+  const nexonForumService = new NexonForumService(client);
+  nexonForumService.start();
 });
