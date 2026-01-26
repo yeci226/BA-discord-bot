@@ -322,7 +322,7 @@ export class NexonForumService {
     const $ = cheerio.load(html);
     const elements: Array<{ type: 'text' | 'image'; content: string }> = [];
 
-    const flatten = (node: any) => {
+    const processNode = (node: any) => {
       if (node.type === 'text') {
         const text = node.data;
         if (text) elements.push({ type: 'text', content: text });
@@ -342,25 +342,165 @@ export class NexonForumService {
           return;
         }
 
+        // Handle containers that need specific wrapping logic
+        if (['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'code'].includes(tagName)) {
+          // Flatten children first to get text content
+          const childElements: Array<{ type: 'text' | 'image'; content: string }> = [];
+
+          // Helper to collect children
+          const collectChildren = (parentNode: any, targetArray: any[]) => {
+            parentNode.children.forEach((child: any) => {
+              if (child.type === 'text') {
+                if (child.data) targetArray.push({ type: 'text', content: child.data });
+              } else if (child.type === 'tag') {
+                // Recurse for nested tags inside formatting?
+                // For simplicity, we process them but we might lose nested formatting if we are not careful.
+                // Let's just recursively call processNode but capture output?
+                // No, current processNode pushes to global 'elements'.
+                // We need a way to capture output of children.
+
+                // NOTE: To fix " ** text ** " -> " **text** ", we need to know the bounds of the text content.
+                // If we have mixed content (text + image), it complicates things.
+                // If we have "<b>bold <img /> text</b>", we probably shouldn't trim across the image.
+
+                // Simplified strategy:
+                // 1. Just push the opening tag (maybe with a marker?)
+                // 2. Process children
+                // 3. Push closing tag
+                // BUT the requirement is to handle the spaces.
+
+                // Alternative: Post-process the elements array?
+                // No, let's treat formatting tags as text wrappers only if they contain text.
+
+                // Let's go back to a simpler "streaming" approach but be smarter about spaces.
+                // It is hard to "trim" in a stream without buffering.
+
+                processNode(child);
+              }
+            });
+          };
+
+          // If we stick to the original "streaming" approach but just fix the "prefix/suffix":
+          // The issue is `<b> text </b>` -> `** text **`.
+          // We want `**text**` or ` **text** `.
+          // Discord doesn't like `** text **`. It likes `**text**`.
+
+          // Let's try attempting to trim the immediate text children if simple?
+          // Or just outputting without spaces?
+
+          // Let's change the strategy:
+          // 1. Capture text content of this node.
+          // 2. Trim it.
+          // 3. If empty, ignore.
+          // 4. If not empty, wrap in `**`.
+          // PROBLEM: This ignores images or nested formatting inside.
+
+          // Better Strategy (Buffer):
+          // 1. Temporarily swap `elements` array.
+          // 2. Process children into temp array.
+          // 3. Check temp array content.
+          // 4. If meaningful content exists, wrap and push to main.
+
+          const tempElements: Array<{ type: 'text' | 'image'; content: string }> = [];
+          const originalElements = elements; // ref to current global valid
+          // We can't easily swap the captured 'elements' closure var.
+          // Refactor to pass array?
+        }
+
+        // --- REFACTORING TO PASS LIST ---
+        // Since I can't easily change the recursive structure inline without major rewrite,
+        // I will do a slightly different approach:
+        // Use a "Context" object or just pass the array.
+      }
+    };
+
+    // --- ACTUAL IMPLEMENTATION ---
+    const collect = (node: any, target: Array<{ type: 'text' | 'image'; content: string }>) => {
+      if (node.type === 'text') {
+        const text = node.data;
+        if (text) target.push({ type: 'text', content: text });
+      } else if (node.type === 'tag') {
+        const tagName = node.name;
+
+        if (tagName === 'img') {
+          const src = node.attribs.src;
+          if (src && !src.startsWith('data:')) {
+            target.push({ type: 'image', content: src });
+          }
+          return;
+        }
+        if (tagName === 'br') {
+          target.push({ type: 'text', content: '\n' });
+          return;
+        }
+
+        // Formatting wrappers
+        const formatMap: { [key: string]: string } = {
+          b: '**',
+          strong: '**',
+          i: '*',
+          em: '*',
+          u: '__',
+          s: '~~',
+          strike: '~~',
+          code: '`',
+        };
+
+        if (formatMap[tagName]) {
+          const wrapper = formatMap[tagName];
+          const childContent: Array<{ type: 'text' | 'image'; content: string }> = []; // Buffer
+
+          node.children.forEach((c: any) => collect(c, childContent));
+
+          // Analyze childContent to determine how to wrap
+          // We want to effectively trim the *text* at the edges of the buffer.
+          // e.g. [ "  foo  ", IMG, "  bar  " ] -> [ "**foo**", "  ", IMG, "  ", "**bar**" ] ?? No that's too complex.
+          // Simple case: [ "  foo  " ] -> [ "  ", "**foo**", "  " ] ?
+          // Discord Markdown: `** foo **` is invalid. `foo **bar** baz` is valid.
+          // We want to move whitespace OUTSIDE the wrapper.
+
+          if (childContent.length === 0) return; // Empty tag -> drop
+
+          // Helper to trim text nodes at edges
+          let startWs = '';
+          let endWs = '';
+
+          if (childContent.length > 0 && childContent[0].type === 'text') {
+            const first = childContent[0];
+            const trimmedStart = first.content.trimStart();
+            if (trimmedStart.length < first.content.length) {
+              startWs = first.content.substring(0, first.content.length - trimmedStart.length);
+              first.content = trimmedStart;
+            }
+          }
+
+          if (childContent.length > 0 && childContent[childContent.length - 1].type === 'text') {
+            const last = childContent[childContent.length - 1];
+            const trimmedEnd = last.content.trimEnd();
+            if (trimmedEnd.length < last.content.length) {
+              endWs = last.content.substring(trimmedEnd.length);
+              last.content = trimmedEnd;
+            }
+          }
+
+          // Check if purely empty after trimming?
+          const isEmpty = childContent.every((c) => c.type === 'text' && !c.content);
+          if (isEmpty) return; // Drop empty formatting
+
+          if (startWs) target.push({ type: 'text', content: startWs });
+          target.push({ type: 'text', content: wrapper });
+          childContent.forEach((c) => target.push(c));
+          target.push({ type: 'text', content: wrapper });
+          if (endWs) target.push({ type: 'text', content: endWs });
+
+          return;
+        }
+
+        // Block Elements
         let prefix = '';
         let suffix = '';
 
-        if (['b', 'strong'].includes(tagName)) {
-          prefix = '**';
-          suffix = '**';
-        } else if (['i', 'em'].includes(tagName)) {
-          prefix = '*';
-          suffix = '*';
-        } else if (['u'].includes(tagName)) {
-          prefix = '__';
-          suffix = '__';
-        } else if (['s', 'strike'].includes(tagName)) {
-          prefix = '~~';
-          suffix = '~~';
-        } else if (['code'].includes(tagName)) {
-          prefix = '`';
-          suffix = '`';
-        } else if (tagName === 'p') {
+        if (tagName === 'p') {
           suffix = '\n\n';
         } else if (tagName === 'div') {
           suffix = '\n';
@@ -374,38 +514,32 @@ export class NexonForumService {
           prefix = '> ';
           suffix = '\n';
         } else if (tagName === 'hr') {
-          elements.push({ type: 'text', content: '\n---\n' });
+          target.push({ type: 'text', content: '\n---\n' });
           return;
         } else if (tagName === 'tr') {
           suffix = '\n';
         } else if (tagName === 'th' || tagName === 'td') {
-          suffix = ' | ';
+          suffix = ' '; // Spacer for table cells
         }
 
-        if (prefix) elements.push({ type: 'text', content: prefix });
+        if (prefix) target.push({ type: 'text', content: prefix });
 
         if (tagName === 'a') {
           const href = node.attribs.href;
-          elements.push({ type: 'text', content: '[' });
-          node.children.forEach((child: any) => flatten(child));
-          getHref(node, href); // Recursive? No wait.
-          elements.push({ type: 'text', content: `](${href})` });
+          target.push({ type: 'text', content: '[' });
+          node.children.forEach((child: any) => collect(child, target));
+          target.push({ type: 'text', content: `](${href})` });
           return;
         }
 
-        node.children.forEach((child: any) => flatten(child));
-        if (suffix) elements.push({ type: 'text', content: suffix });
+        node.children.forEach((child: any) => collect(child, target));
+        if (suffix) target.push({ type: 'text', content: suffix });
       }
-    };
-
-    const getHref = (node: any, href: string) => {
-      // Logic to get text inside a?
-      // Just flatten children.
     };
 
     $('body')
       .contents()
-      .each((i, el) => flatten(el));
+      .each((i, el) => collect(el, elements));
 
     const merged: Array<{ type: 'text' | 'image'; content: string }> = [];
     let currentText = '';
