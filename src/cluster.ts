@@ -16,7 +16,7 @@ const __dirname = dirname(__filename);
  */
 const clusterManager = new ClusterManager(`${__dirname}/index.js`, {
   totalShards: 'auto',
-  totalClusters: 5,
+  totalClusters: 'auto',
   mode: 'worker',
   token: process.env.NODE_ENV === 'dev' ? process.env.TEST_TOKEN : process.env.TOKEN,
   restarts: {
@@ -30,6 +30,15 @@ clusterManager.extend(new HeartbeatManager({ interval: 2000, maxMissedHeartbeats
 clusterManager.on('clusterCreate', (cluster) => {
   cluster.on('ready', () => {
     new Logger('分片').info(`已啟動 Cluster #${cluster.id}`);
+    setInterval(
+      () => {
+        const memory = process.memoryUsage();
+        new Logger('系統').info(
+          `[Cluster #${cluster.id}] RSS: ${(memory.rss / 1024 / 1024).toFixed(2)}MB, Heap: ${(memory.heapUsed / 1024 / 1024).toFixed(2)}MB`,
+        );
+      },
+      1000 * 60 * 10,
+    );
   });
 
   cluster.on('reconnecting', () => {
@@ -42,6 +51,23 @@ clusterManager.on('clusterCreate', (cluster) => {
   });
 });
 
+process.on('uncaughtException', (error) => {
+  try {
+    new Logger('集群').error(`未捕獲的異常: ${error}`);
+  } catch {}
+});
+
+process.on('unhandledRejection', (reason) => {
+  try {
+    new Logger('集群').error(`未處理的Promise拒絕: ${reason}`);
+  } catch {}
+});
+
 (async () => {
-  await clusterManager.spawn();
+  try {
+    await clusterManager.spawn();
+  } catch (error) {
+    new Logger('集群').error(`啟動集群失敗: ${error}`);
+    process.exit(1);
+  }
 })();

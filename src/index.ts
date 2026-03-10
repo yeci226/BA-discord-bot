@@ -154,4 +154,45 @@ client.login(process.env.NODE_ENV === 'dev' ? process.env.TEST_TOKEN : process.e
 
 load();
 
+// ====================================
+// 設置統計數據推送到 personalWeb
+// ====================================
+const STATS_API = process.env.STATS_API_URL;
+const STATS_API_TOKEN = process.env.STATS_API_TOKEN;
+
+if (!STATS_API) {
+  new Logger('Stats').warn('STATS_API_URL is not set, stats push is disabled');
+} else {
+  setInterval(async () => {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (STATS_API_TOKEN) {
+        headers.Authorization = `Bearer ${STATS_API_TOKEN}`;
+      }
+
+      await fetch(STATS_API, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          botId: 'ba-discord-bot',
+          botName: 'Blue Archive',
+          timestamp: Date.now(),
+          stats: {
+            totalCommands24h: 0,
+            totalErrors24h: 0,
+            topCommands: [],
+            byCommand: [],
+          },
+        }),
+      }).catch((err) => {
+        new Logger('Stats').error(`Failed to push stats: ${err.message}`);
+      });
+    } catch (error) {
+      new Logger('Stats').error(`Error pushing stats: ${(error as Error).message}`);
+    }
+  }, 60_000); // 每 60 秒推送一次
+}
+
 export { client, database, cluster, commands };

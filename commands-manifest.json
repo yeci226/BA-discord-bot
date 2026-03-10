@@ -1,0 +1,31 @@
+{
+  "botId": "ba-discord-bot",
+  "generatedAt": "2026-03-10T07:30:03.986Z",
+  "commands": [
+    {
+      "name": "/builder",
+      "sourceFile": "src/commands/slash/ba/builder.ts",
+      "updatedAt": "2025-08-08T07:17:28.029Z"
+    },
+    {
+      "name": "/gacha",
+      "sourceFile": "src/commands/slash/ba/gacha.ts",
+      "updatedAt": "2025-08-17T04:50:12.718Z"
+    },
+    {
+      "name": "/notification",
+      "sourceFile": "src/commands/slash/ba/notification.ts",
+      "updatedAt": "2026-01-26T09:33:15.592Z"
+    },
+    {
+      "name": "/pull",
+      "sourceFile": "src/commands/slash/ba/pull.ts",
+      "updatedAt": "2025-08-13T13:34:04.038Z"
+    },
+    {
+      "name": "/student",
+      "sourceFile": "src/commands/slash/ba/student.ts",
+      "updatedAt": "2025-08-17T04:48:45.662Z"
+    }
+  ]
+}

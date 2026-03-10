@@ -13,6 +13,7 @@ import {
   PermissionsBitField,
 } from 'discord.js';
 import { client, commands } from '@/index.js';
+import { getCommandAckPlan, ensureDeferredReply, replyOrFollowUp } from '@bot/shared';
 
 import { failedReply } from '@/utilities/index.js';
 import Logger from '@/utilities/core/logger.js';
@@ -46,7 +47,7 @@ async function checkBotPermissions(interaction: Interaction): Promise<boolean> {
 
     if (!hasPermissions) {
       try {
-        await (interaction as any).followUp({
+        await replyOrFollowUp(interaction, {
           content: '❌ 彩奈需要以下權限才能正常運作：\n• 查看頻道\n• 發送訊息\n\n請聯繫伺服器管理員開啟這些權限',
           flags: MessageFlags.Ephemeral,
         });
@@ -277,7 +278,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   if (interaction.isCommand()) {
     const command = commands.slash.get(interaction.commandName);
     if (!command)
-      return interaction.followUp({
+      return replyOrFollowUp(interaction, {
         content: '哎呀，好像出了一點小問題，請老師稍後再試',
         flags: MessageFlags.Ephemeral,
       });
@@ -297,6 +298,11 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
       // 檢查權限
       if (!(await checkBotPermissions(interaction))) {
         return;
+      }
+
+      const ackPlan = getCommandAckPlan(command, { defaultEphemeral: true });
+      if (ackPlan.shouldDefer) {
+        await ensureDeferredReply(interaction, ackPlan.ephemeral);
       }
 
       await command.execute(interaction as ChatInputCommandInteraction, ...args);
